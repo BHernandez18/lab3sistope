@@ -6,7 +6,7 @@
 
 // Estructura para identificar un guerrero.
 typedef struct guerrero {
-	char * nombreGuerrero[50];
+	char nombreGuerrero[50];
 	int hp;
 	int ki;
 	int realizoAtaque;
@@ -14,18 +14,21 @@ typedef struct guerrero {
 	int colorUniverso;
 	int xPos;
 	int yPos;
+	int valido;
 } guerrero;
 
 // Dimensiones de la arena.
 int ancho;
 int alto;
 int nroGuerreros; // Nro. de guerreros.
+guerrero nullGuerrero;
 guerrero * guerreros; // Lista de guerreros.
 guerrero ** tableroGuerreros; // Tablero de los guerreros para la vista.
+pthread_t * hebras; // Hebras del juego.
 pthread_mutex_t ** tableroThreads; // Tablero para los movimientos.
 // Quizas se deba añadir un 3er tablero para los ataques.
 
-
+int verGuerreros();
 int cantidadGuerreros(char * nombreArchivo);
 int realizarAtaque(int ki, int universo, int xPos, int yPos);
 void crearTableros();
@@ -56,20 +59,22 @@ void leerArchivo(char * nombreArchivo, int n) {
     char nombreGuerrero[50];
 
     i = 0;
+    nullGuerrero.valido = 0;
+    hebras = (pthread_t *)malloc(sizeof(pthread_t) * n);
     guerreros = (guerrero *)malloc(sizeof(guerrero) * n);
     archivoEntrada = fopen(nombreArchivo, "r");
     while (i < n) {
         fscanf(archivoEntrada, "%d %d %d %s", &hp, &colorUniverso, &universo, nombreGuerrero);
-        guerreros[i].hp = hp;
-        guerreros[i].colorUniverso = colorUniverso;
-        guerreros[i].universo = universo;
-        guerreros[i].realizoAtaque = 0;
-        guerreros[i].ki = 0;
         strcpy(guerreros[i].nombreGuerrero, nombreGuerrero);
+        guerreros[i].hp = hp;
+        guerreros[i].ki = 0;
+        guerreros[i].realizoAtaque = 0;
+        guerreros[i].universo = universo;
+        guerreros[i].colorUniverso = colorUniverso;
+        guerreros[i].valido = 1;
         i++;
     }
     fclose(archivoEntrada);
-    return warriors;
 }
 
 void crearTableros() {
@@ -82,7 +87,6 @@ void crearTableros() {
 		tableroThreads[i] = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t) * ancho);
 		tableroGuerreros[i] = (guerrero *)malloc(sizeof(guerrero) * ancho);
 	}
-
 }
 
 void iniciarTableros() {
@@ -94,18 +98,17 @@ void iniciarTableros() {
 				fprintf(stderr, "<> ERROR: Problema al iniciar el tablero. <>");
 				exit(1);
 			}
-			tableroGuerreros[i][j] = NULL;
 		}
 	}
 }
 
 int realizarAtaque(int ki, int universo, int xPos, int yPos) {
-	int dañoTotal, tmpX, tmpY, realizoAtaque;
+	int danoTotal, tmpX, tmpY, realizoAtaque;
 	guerrero * enemigo;
 	// Configuración de si se realizó un ataque o no.
 	realizoAtaque = 0;
 	// Daño total a realizar a los personajes.
-	dañoTotal = ki * 5;
+	danoTotal = ki * 5;
 	// Se obtienen los posibles enemigos y se realiza el ataque.
 	// === Enemigo de arriba ===
 	tmpX = xPos - 1;
@@ -115,11 +118,11 @@ int realizarAtaque(int ki, int universo, int xPos, int yPos) {
 		// Se realiza el ataque.
 		enemigo = &tableroGuerreros[tmpX][tmpY];
 		// Si hay un posible enemigo.
-		if (enemigo != NULL) {
+		if (enemigo->valido != 0) {
 			// Si son de universos distintos.
 			if (enemigo->universo != universo) {
 				// Se resta la vida al guerrero.
-				enemigo->hp = enemigo->hp - dañoTotal;
+				enemigo->hp = enemigo->hp - danoTotal;
 				realizoAtaque = 1;
 			}
 		}	
@@ -129,54 +132,54 @@ int realizarAtaque(int ki, int universo, int xPos, int yPos) {
 	tmpX = xPos + 1;
 	tmpY = yPos;
 	// Verificación de posición.
-	if (xPos < alto) {
+	if (tmpX >= 0) {
 		// Se realiza el ataque.
 		enemigo = &tableroGuerreros[tmpX][tmpY];
 		// Si hay un posible enemigo.
-		if (enemigo != NULL) {
+		if (enemigo->valido != 0) {
 			// Si son de universos distintos.
 			if (enemigo->universo != universo) {
 				// Se resta la vida al guerrero.
-				enemigo->hp = enemigo->hp - dañoTotal;
+				enemigo->hp = enemigo->hp - danoTotal;
 				realizoAtaque = 1;
 			}
-		}
+		}	
 	}
 
 	// === Enemigo de la izquierda ===
 	tmpX = xPos;
 	tmpY = yPos - 1;
 	// Verificación de posición.
-	if (yPos >= 0) {
+	if (tmpX >= 0) {
 		// Se realiza el ataque.
 		enemigo = &tableroGuerreros[tmpX][tmpY];
 		// Si hay un posible enemigo.
-		if (enemigo != NULL) {
+		if (enemigo->valido != 0) {
 			// Si son de universos distintos.
 			if (enemigo->universo != universo) {
 				// Se resta la vida al guerrero.
-				enemigo->hp = enemigo->hp - dañoTotal;
+				enemigo->hp = enemigo->hp - danoTotal;
 				realizoAtaque = 1;
 			}
-		}
+		}	
 	}
 
 	// === Enemigo de la derecha ===
 	xPos = xPos;
 	yPos = yPos + 1;
 	// Verificación de posición.
-	if (yPos < ancho) {
+	if (tmpX >= 0) {
 		// Se realiza el ataque.
 		enemigo = &tableroGuerreros[tmpX][tmpY];
 		// Si hay un posible enemigo.
-		if (enemigo != NULL) {
+		if (enemigo->valido != 0) {
 			// Si son de universos distintos.
 			if (enemigo->universo != universo) {
 				// Se resta la vida al guerrero.
-				enemigo->hp = enemigo->hp - dañoTotal;
+				enemigo->hp = enemigo->hp - danoTotal;
 				realizoAtaque = 1;
 			}
-		}
+		}	
 	}
 	return realizoAtaque;
 }
@@ -186,7 +189,7 @@ void * entrarArena(void * concursante) {
 	// Se castea el concursante.
 	guerrero * personaje = (guerrero *) concursante;
 	// Loop para colocarlo en un lugar disponible de la arena.
-	while (true) {
+	while (1) {
 		// Se obtiene una posición aleatoria del tablero.
 		xPos = rand() % alto;
 		yPos = rand() % ancho;
@@ -194,13 +197,14 @@ void * entrarArena(void * concursante) {
 		if (pthread_mutex_trylock(&tableroThreads[xPos][yPos]) == 0) {
 			personaje->xPos = xPos;
 			personaje->yPos = yPos;
+			tableroGuerreros[xPos][yPos] = *personaje;
 			break;
 		}
 	}
 	//
 	// Mientras el guerrero aún tenga vida.
 	//
-	while (personaje->hp > 0) {
+	while (personaje->hp > 0 && personaje->valido == 1) {
 		// Se obtiene el movimiento hacia donde avanzar.
 		sigMovimiento = rand() % 4;
 		switch (sigMovimiento) {
@@ -235,18 +239,19 @@ void * entrarArena(void * concursante) {
 		//
 		// Se intenta avanzar a la posición indicada.
 		//
+		printf("El guerrero %s sigue vivo\n", personaje->nombreGuerrero);
 		sleep(1);
 		if (pthread_mutex_trylock(&tableroThreads[xPos][yPos]) == 0) {
 			// Se obtiene temporalmente la ubicación actual del personaje.
 			tmpX = personaje->xPos;
 			tmpY = personaje->yPos;
 			// Se ubica al personaje en las coordenadas dadas.
-			tableroGuerreros[xPos][yPos] = *guerrero
+			tableroGuerreros[xPos][yPos] = *personaje;
 			// Se asigna la nueva ubicación del personaje.
 			personaje->xPos = xPos;
 			personaje->yPos = yPos;
 			// Se 'elimina' al personaje de la anterior ubicación.
-			tableroGuerreros[tmpX][tmpY] = NULL;
+			tableroGuerreros[tmpX][tmpY] = nullGuerrero;
 			// Se libera el mutex de la ubicación anterior del personaje.
 			pthread_mutex_unlock(&tableroThreads[tmpX][tmpY]);
 		}
@@ -257,6 +262,8 @@ void * entrarArena(void * concursante) {
 		if (personaje->realizoAtaque == 1) { personaje->ki = 0; }
 		else { personaje->ki = personaje->ki + 1; }
 	}
+	personaje->valido = 0;
+	printf("El guerrero %s acaba de perder\n", personaje->nombreGuerrero);
 }
 
 int revisarGuerreros() {
@@ -273,13 +280,24 @@ int revisarGuerreros() {
 void comenzarJuego() {
 	int i;
 	for (i = 0; i < 10; i++) {
-		if ( pthread_create(&hebras[i], NULL, contadorFunc, (void *) &guerreros[i]) ) {
+		if ( pthread_create(&hebras[i], NULL, entrarArena, (void *) &guerreros[i]) ) {
             printf("something is wrong creating the thread"); 
         }
 	}
 	for (i = 0; i < 10; i++) {
 		pthread_join(hebras[i], NULL);
 	}
+}
+
+int verGuerreros() {
+    int i = 0;
+    while(i < nroGuerreros) {
+    	printf("----------\n");
+        printf("%d %d %d %s\n", guerreros[i].hp, guerreros[i].colorUniverso, guerreros[i].universo, guerreros[i].nombreGuerrero);
+        printf("----------\n");
+        i++;
+    }
+    return 1;
 }
 
 int main() {
@@ -294,11 +312,10 @@ int main() {
 	// Se lee la información sobre los guerreros y se crea
 	// la lista de guerreros que entrarán a la arena.
 	leerArchivo("entrada.txt", nroGuerreros);
-	// Se crean las hebras para cada guerrero.
-	pthread_t * hebras = (pthread_t *)malloc(sizeof(pthread_t) * nroGuerreros);
 	// Se crean e inicializan los tableros.
 	crearTableros();
 	iniciarTableros();
+	comenzarJuego();
 	/*
 	for (i = 0; i < 10; i++) {
 		if ( pthread_create(&hebras[i], NULL, contadorFunc, (void *) &guerreros[i]) ) {
