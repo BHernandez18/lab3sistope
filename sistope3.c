@@ -126,7 +126,7 @@ int realizarAtaque(int ki, int universo, int xPos, int yPos) {
 	tmpY = yPos;
 	// Verificación de posición.
 	if (tmpX >= 0) {
-		// Se realiza el ataque.
+		// Se obtiene la id del guerrero.
 		enemigoId = tableroGuerreros[tmpX][tmpY];
 		// Se intenta hacer un 'lock' al mutex.
 		pthread_mutex_lock(&mutexPersonajes[enemigoId]);
@@ -147,8 +147,8 @@ int realizarAtaque(int ki, int universo, int xPos, int yPos) {
 	tmpX = xPos + 1;
 	tmpY = yPos;
 	// Verificación de posición.
-	if (tmpX >= 0) {
-		// Se realiza el ataque.
+	if (tmpX < alto) {
+		// Se obtiene la id del guerrero.
 		enemigoId = tableroGuerreros[tmpX][tmpY];
 		// Se intenta hacer un 'lock' al mutex.
 		pthread_mutex_lock(&mutexPersonajes[enemigoId]);
@@ -169,8 +169,8 @@ int realizarAtaque(int ki, int universo, int xPos, int yPos) {
 	tmpX = xPos;
 	tmpY = yPos - 1;
 	// Verificación de posición.
-	if (tmpX >= 0) {
-		// Se realiza el ataque.
+	if (tmpY >= 0) {
+		// Se obtiene la id del guerrero.
 		enemigoId = tableroGuerreros[tmpX][tmpY];
 		// Se intenta hacer un 'lock' al mutex.
 		pthread_mutex_lock(&mutexPersonajes[enemigoId]);
@@ -191,8 +191,8 @@ int realizarAtaque(int ki, int universo, int xPos, int yPos) {
 	xPos = xPos;
 	yPos = yPos + 1;
 	// Verificación de posición.
-	if (tmpX >= 0) {
-		// Se realiza el ataque.
+	if (tmpX < ancho) {
+		// Se obtiene la id del guerrero.
 		enemigoId = tableroGuerreros[tmpX][tmpY];
 		// Se intenta hacer un 'lock' al mutex.
 		pthread_mutex_lock(&mutexPersonajes[enemigoId]);
@@ -236,7 +236,7 @@ void * entrarArena(void * concursante) {
 	//
 	// Mientras el guerrero aún tenga vida.
 	//
-	while (personaje->hp > 0 && personaje->valido == 1) {
+	while (personaje->hp > 0) {
 		// Se obtiene el movimiento hacia donde avanzar.
 		sigMovimiento = rand() % 4;
 		switch (sigMovimiento) {
@@ -287,18 +287,27 @@ void * entrarArena(void * concursante) {
 			// Se libera el mutex de la ubicación anterior del personaje.
 			pthread_mutex_unlock(&tableroMovimientos[tmpX][tmpY]);
 		} else {
-			pthread_mutex_lock(&mutexPersonajes[idPersonaje]);
+			//pthread_mutex_lock(&mutexPersonajes[idPersonaje]);
 			personaje->ki = personaje->ki + 1;
-			pthread_mutex_unlock(&mutexPersonajes[idPersonaje]);
+			//pthread_mutex_unlock(&mutexPersonajes[idPersonaje]);
 		}
 		//
 		// Se intenta atacar a los enemigos alrededor.
 		//
 		ataqueHecho = realizarAtaque(personaje->ki, personaje->universo, personaje->xPos, personaje->yPos);
-		if (ataqueHecho == 1) { personaje->ki = 0; }
-		else { personaje->ki = personaje->ki + 1; }
+		if (ataqueHecho == 1) {
+			//pthread_mutex_lock(&mutexPersonajes[idPersonaje]);
+			personaje->ki = 0;
+			//pthread_mutex_unlock(&mutexPersonajes[idPersonaje]);
+		} else {
+			//pthread_mutex_lock(&mutexPersonajes[idPersonaje]);
+			personaje->ki = personaje->ki + 1;
+			//pthread_mutex_unlock(&mutexPersonajes[idPersonaje]);
+		}
 	}
-	//personaje->valido = 0;
+	//pthread_mutex_lock(&mutexPersonajes[idPersonaje]);
+	personaje->valido = 0;
+	//pthread_mutex_unlock(&mutexPersonajes[idPersonaje]);
 	//printf("El guerrero %s acaba de perder\n", personaje->nombreGuerrero);
 }
 
